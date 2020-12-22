@@ -5,7 +5,7 @@
 git init 
 git remote add origin https://github.com/KAIAOS/learning-notes.git
 git add .
-git commit -m 'init repository'
+git commit -m "init repository"
 git push -u origin master
 ```
 
