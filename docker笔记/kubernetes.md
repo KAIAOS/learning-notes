@@ -3,6 +3,8 @@
 > 需要掌握
 >
 > 前世今生   kubernetes框架   kubernetes组件
+>
+> kubeadm init --apiserver-advertise-address=192.168.117.4 --image-repository registry.aliyuncs.com/google_containers --service-cidr=10.96.0.0/12  --pod-network-cidr=10.244.0.0/16
 
 <img src="C:\Users\hanka\AppData\Roaming\Typora\typora-user-images\image-20201222103851288.png" alt="image-20201222103851288" style="zoom:50%;" />
 
@@ -128,7 +130,7 @@ kubectl replace -f  pod.yml #根据yml文件重启pod
 
 kubectl get pod         #查询当前pod
 kubectl describe pod  [pod名称]    #查看pod详细状态
-kubectl log pod  [pod名称]    #查看pod日志
+kubectl logs pod  [pod名称]    #查看pod日志
 kubectl log [pod名称] -c [容器名称]    #查看pod内容器日志
 kubectl edit pod [pod名称]     #编辑这个pod的资源清单
 
@@ -188,8 +190,9 @@ kubectl exec [pod名称] (-c [容器名称])  -it -- /bin/sh
 4. StatefulSet
    1. 解决有状态服务对应Deployment 和 ReplicaSet是无状态服务
    2. 稳定的持久化存储，即Pod重新调度可以访问到相同的持久化数据
-   3. 稳定的网络标识，Pod重新调度后PodName和HostName都不变
+   3. 稳定的网络标识，Pod重新调度后PodName和HostName都不变 $(podname).$(headless server name)
    4. 有序部署、有序扩展，pod部署或者扩展时按照预定的顺序
+      1. 如果有很多Pod副本，它们会被顺序的创建（0---N-1）并且下一个Pod运行之前所有Pod必须是Running和Ready状态
 5. DaemonSet
    1. DaemonSet确全部（或者一些）Node上仅运行一个Pod副本，当有新的Node加入集群时，会增加一个Pod，当Node删除时候这些Pod被回收
    2. 一些典型用法
@@ -204,17 +207,83 @@ kubectl exec [pod名称] (-c [容器名称])  -it -- /bin/sh
 >
 >SVC原理       构建方式
 
+#### 1、介绍
+
 Kubenetes`Service`定义了这样一种抽象：一个`Pod`的逻辑分组，一种可以访问它们的策略----通常称之为微服务/这一组Pod能够被`Service`访问到，就是通过`Lable Selector`
 
 <img src="C:\Users\hanka\AppData\Roaming\Typora\typora-user-images\image-20201222212442122.png" alt="image-20201222212442122" style="zoom:50%;" />
 
+#### 2、Service类型
 
+1. ClusterIp：默认类型，自动分配一个仅Cluster内部可以访问的虚拟Ip
+   1. 还有一种HeadService：有时候不需要负载均衡和单独的ServiceIp，通过指定ClusterIP的 值为‘None’来创建Headless Service
+2. NodePort：在ClusterIp基础上为每台机器上绑定一个端口，这样就可以通过Node IP：NodePort 来访问服务
+3. LoadBalancer：在NodePort的基础上，借助Cloud Provider创建一个外部的负载均衡器，并将请求转发到  Node IP：NodePort，，云供应商需要额外收费的
+4. ExternalName：把集群外部的服务引入到集群内部来，在集群内部直接使用。没有任何类型的代理被创建（是集群内部访问外部服务会用到） 
+
+<img src="C:\Users\hanka\AppData\Roaming\Typora\typora-user-images\image-20201223143158124.png" alt="image-20201223143158124" style="zoom:50%;" />
+
+​		kube-proxy负责将相应标签的Pod访问写入iptables，当客户端访问时会经过iptables访问到相应的Pod，apiserver负责监控，现版本使用IPVS
+
+#### 3、Port、TargetPort、NodePort
+
+1. 这里的port表示：service暴露在cluster ip上的端口，**<cluster ip>:port** 是提供给集群内部客户访问service的入口。
+2. targetPort很好理解，targetPort是pod上的端口，从port和nodePort上到来的数据最终经过kube-proxy流入到后端pod的targetPort上进入容器。
+3. nodePort是kubernetes提供给集群外部客户访问service入口的一种方式（另一种方式是LoadBalancer），所以，<nodeIP>:nodePort 是提供给集群外部客户访问service的入口。
 
 ### 六、存储
 
 > 需要掌握
 >
 > 多种存储类型的特点    应用场景
+
+#### 1、ConfigMap
+
+#### 2、Secret
+
+#### 3、Volume
+
+> 当容器崩溃时，kubelet会重启，容器会以干净的状态重新启动。其次在Pod同时运行多个容器时，这些容器之间通常需要共享文件。kubenetes中Volume解决了这个问题
+>
+> Volume有明确的寿命-- 与封装它的Pod相同，当Pod删除时，它也不存在
+
+1. emptyDir：当Pod被分配给节点时，首先创建emptyDir卷，并且只要该Pod在该节点上运行，该卷就会存在，最初时空的。Pod中的容器可以读取和写入emptyDir卷中的相同文件，尽管改卷可以挂载到每个容器的相同或不同的路径上。当出于任何原因从节点删除Pod时，empthDir中的数据被永久删除
+2. hostPath：将主机节点的文件系统中的文件或者目录挂载到集群中，用途如下
+   1. 运行需要访问Docker内部容器的文件或容器使用主机的文
+
+<img src="C:\Users\hanka\AppData\Roaming\Typora\typora-user-images\image-20201223161118089.png" alt="image-20201223161118089" style="zoom:50%;" />
+
+**使用这种卷时需要注意：**
+
+- 由于每个节点的文件不同，具有相同配置的Pod在不同节点上的行为会有所不同
+- 当kubenetes按照计划添加资源感知的调度时，将无法考虑hostPath的资源
+- 在底层主机上创建的文件或目录只能由root写入，需要在特权容器中以root运行，或者修改主机的文件权限以便写入hostPath
+
+```yml
+# 一个使用hostPath的Pod资源清单
+kind: Pod
+metedata:
+  name: test-pd
+spec:
+  containers:
+    - image: k8s.gcr.io/test-webserver
+      name: test-container
+      volumeMounts:
+      - mountPath: /test-pd
+        name: test-volume
+  volumes:
+  - name: test-volume
+    hostPath:
+     # directory name on host
+     path: /data
+     # this field is optional,Directory means the directory path must exist
+     type: Directory
+```
+
+#### 4、PV and PVC
+
+1. PersistentVolume（PV）是由管理员设置的存储，它是集群的一部分。就像是集群中的资源一样，PV也是集群中的资源，此API对象包含存储实现的细节，即NFS、ISCSI或特定于云供应商的存储系统
+2. PersistentVolumeClaim（PVC）是用户存储的请求。它与Pod类似，Pod消耗节点资源，PVC消耗PV资源，声明可以请求特定的大小和访问模式
 
 
 
