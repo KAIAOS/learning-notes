@@ -293,7 +293,33 @@ spec:
 >
 > 调度器原理       根据pod定义到想要的节点运行
 
+#### 1、调度说明
 
+1. Scheduler是Kubenetes的调度器，任务是把定义的Pod分配到集群的节点上，保证公平、资源高效利用、效率和灵活，Scheduler是作为单独的程序运行的，启动之后一直监听API server，获取`PodSpec。NodeName`为空的pod，为其创建一个binding，表明该pod放在哪个节点上
+2. 调度过程：首先过滤掉不满足条件的节点，这个过程为predicate，然后通过节点按照优先级排序priority
+
+#### 2、调度亲和性
+
+1. `pod.spec.nodeAffinity` 节点亲和性
+   1. preferedDuringSchedulingIgnoredDuringExecution 软策略 （满足就运行，不满足就算了）
+   2. requiredDuringSchedulingIgnoredDuringExecution  硬策略（不满足就不运行，pod会pending）
+2. `pod.spec.podAffinity/podAntiAffinity` Pod亲和性
+   1. preferedDuringSchedulingIgnoredDuringExecution 软策略
+   2. requiredDuringSchedulingIgnoredDuringExecution  硬策略
+
+#### 3、污点 taint和toleration
+
+1. 节点亲和性是pod的一种属性，它使得pod被调度到一类特定的节点，而taint则相反，它使得节点能够排斥一类特定的Pod。taint和toleration相互配合，避免pod被分配到不合适的节点，每个节点都可以应用多个taint，不能容忍这些taint的pod是不会运行的，如果可以容忍则有可能会运行在该节点
+2. `kubectl taint` 可以给某个节点设置污点，每个污点由`key=value:effect`组成，value可以为空，effect描述污点的作用   effetc:
+   1.  NoSchedule: 表示k8s将不会把Pod调度到具有该污点的Node上
+   2. PreferNoSchedule: 表示k8s尽量避免将pod调度到该污点的Node上
+   3. NoExecute: 表示k8s将不会把Pod调度到该node上，同时会将Node上已经存在的Pod驱逐出去
+3. `pod.spec.toleration`设置容忍。key、value、effect、要与node上的taint一致，当不指定key值时，表示容忍所有的污点key，当不指定effect时，表示容忍所有的污点作用
+
+#### 4、固定节点
+
+1. Pod.spec.nodeName 将Pod直接调度到指定的Node节点上，会跳过Scheduler的调度策略，该匹配规则是强制匹配
+2. Pod.spec.nodeSelector 通过kubenetes的label-selector机制选择节点，由调度器调度策略匹配label<kbd>kubectl label node k8s-node01 disk=ssd</kbd>可以打标签<kbd>Ctrl</kbd>+<
 
 ### 八、集群安全
 
@@ -301,7 +327,24 @@ spec:
 >
 >集群的认证      鉴权     访问控制     原理及流程
 
+**机制说明：Kubenetes作为一个分布式集群的管理工具，保证集群的安全性是重要任务。API Server是集群内部各个组件通信的中介，也是外部控制的入口。所以kubenetes的安全机制就是围绕保护API Server来设计的。Kubernetes使用了认证（Authentication）、鉴权（Authorization）、准入控制（Admission Controll）**
 
+#### 1、 Authtication
+
+- HTTP Token认证：通过一个Token来识别合法用户
+- HTTP Base认证： 通过用户名+密码的方式认证
+  - 用户名+密码用BASE64算法进行编码后的字符串放在HTTP Request的Header中
+- 最严格的HTTPS证书认证，基于CA根证书签名的客户端身份认证方式
+
+**安全性说明：Cotroller Manager、Scheduler与API Server在同一台机器，所以直接用API Server的非安全端口访问；kubectl、kubelet、kube-proxy访问API Server则需要HTTPS证书双向认证**
+
+#### 2、Authorization
+
+- AlwaysDeny:  拒绝所有请求
+- AlwaysAllow：允许所有请求
+- ABAC(Attribute-Based Access Controll)：基于属性的访问控制，表示使用用户的授权规则对用户请求进行匹配和控制 
+- Webbook：调用外部服务对用户授权
+- **RBAC(Role-Based  Access Controll)**: 基于角色的访问控制，先行默认规则
 
 ### 九、HELM
 
@@ -309,3 +352,13 @@ spec:
 >
 >相当于Linux yum   掌握HELM原理    HELM自定义模板    部署常用的插件
 
+**在没使用helm之前，向kubernetes部署应用，我们依次部署deployment、svc等，不走较繁琐，helm通过打包的方式，支持发布的版本管理和控制，很大程度上简化了kubernetes应用的部署和管理**
+
+**Helm的本质就是让k8s的应用管理可配置，能动态生成，通过动态生成资源清单文件（deployment.yml,service.yml）调用kubectl自动执行k8s资源部署**
+
+**Helm是官方提供的类似YUM的包管理器，是部署环境的流程封装。Helm有两个重要的概念：chart和release**
+
+- chart是创建一个应用的信息集合，包括各种kubernetes对象的配置模板、参数定义、依赖关系、文档说明。chart是应用部署的逻辑单元。类似与yum中的软件安装包
+- release是chart的运行实例，代表了一个正在运行的应用。当chart被安装到kubernetes集群，就生成了一个release。chart能够多次安装到同一个集群，每次安装都是一个release
+
+ 
