@@ -10,9 +10,10 @@
 
 #### 1、 特点
 
-1. 轻量级：消耗资源少
-2. 弹性收缩
-3. 负载均衡：IPVS
+1. 容器化集群管理系统
+2. 轻量级：消耗资源少
+3. 弹性收缩
+4. 负载均衡：IPVS
 
 #### 2、组件
 
@@ -361,4 +362,38 @@ spec:
 - chart是创建一个应用的信息集合，包括各种kubernetes对象的配置模板、参数定义、依赖关系、文档说明。chart是应用部署的逻辑单元。类似与yum中的软件安装包
 - release是chart的运行实例，代表了一个正在运行的应用。当chart被安装到kubernetes集群，就生成了一个release。chart能够多次安装到同一个集群，每次安装都是一个release
 
- 
+ ```shell
+helm repo add [名称]
+helm install [安装之后名称] [搜索名称]
+helm list
+helm status  [安装之后名称]
+
+#修改service的yaml文件，type改为nodePort
+kubectl edit svc ui-weave-scope
+ ```
+
+#### 创建chart
+
+`helm create mychart`  创建chart
+
+### 十、部署项目流程
+
+#### 1、容器交付流程
+
+1. 开发代码，测试，编写Dockerfile
+2. 持续集成Continuous Integration(*CI*)和持续交付Continuous Delivery(*CD*)
+   1. 制作镜像 上传镜像仓库
+3. 应用部署 （环境准备  Pod Service Ingress）
+4. 运维  （监控  故障排除   升级版本）
+
+#### 2、 k8s部署项目流程
+
+1. 制作镜像
+2. 上传镜像仓库
+   1. docker tag [imageId] 
+3. 通过控制器部署镜像
+   1. kubectl create deployment java-deloyment --image=registry.us-west-1.aliyuncs.com/kaidev/java:1.0.0 --dry-run -o yaml>java-deployment.yaml
+   2. kubectl scale deployment  [dp名称] --replicas=3
+4. Service或ingress对外暴露应用
+   1. kubectl expose deployment java-deloyment  --port=8080 --target-port=8111 --type=NodePort --dry-run -o yaml>java-deployment-service.yaml
+5. 监控升级

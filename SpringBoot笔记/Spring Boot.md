@@ -206,7 +206,7 @@ jpa:
 
   ![image-20201218150914107](C:\Users\hanka\AppData\Roaming\Typora\typora-user-images\image-20201218150914107.png)
 
-<img src="C:\Users\hanka\AppData\Roaming\Typora\typora-user-images\image-20201220154401991.png" alt="image-20201220154401991" style="zoom:50%;" />分割人人人人人都是是否缺少维生素的完全
+<img src="C:\Users\hanka\AppData\Roaming\Typora\typora-user-images\image-20201220154401991.png" alt="image-20201220154401991" style="zoom:50%;" />
 
 <img src="C:\Users\hanka\AppData\Roaming\Typora\typora-user-images\image-20201220163716215.png" alt="image-20201220163716215" style="zoom:67%;" />
 

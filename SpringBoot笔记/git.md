@@ -11,7 +11,7 @@ git push -u origin master
 
 
 
-``` git
+``` 
 #建新分支
 git checkout -b dev #创建新分支 = git branch dev and git checkout dev
 git push origin dev #本地分支push到远端
