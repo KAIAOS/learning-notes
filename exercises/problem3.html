@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<body onload="checkUa()">
+
+<p id="demo"></p>
+<p id="demo1"></p>
+<script>
+    /*
+    当用户进入后及离开页面时，会触发 onload 和 onunload 事件。
+
+    onload 事件可用于检测访问者的浏览器类型和浏览器版本，然后基于该信息加载网页的恰当版本。
+
+    onload 和 onunload 事件可用于处理 cookie。
+     */
+    //document.getElementById("demo").innerHTML = navigator.userAgent.toLowerCase();
+
+    res = getRequest();
+    document.getElementById("demo1").innerHTML = JSON.stringify(res);
+
+    function checkUa() {
+        var ua = navigator.userAgent.toLowerCase();
+        // 正则忽略ignore大小写 /xxx/i
+        if (ua.match(/MicroMessenger/i) == "micromessenger"){
+            document.getElementById("demo").innerHTML = "weixin";
+        }else if (ua.match(/QQ/i) == "qq"){
+            document.getElementById("demo").innerHTML = "qq";
+        }else{
+            document.getElementById("demo").innerHTML = ua;
+        }
+    }
+
+    function getRequest() {
+        const url = window.location.search;
+        const request = new Object();
+        let strs;
+        if (url.indexOf("?") !== -1) {
+            const str = url.substr(1);
+            strs = str.split("&");
+            for (let i = 0; i < strs.length; i++) {
+                request[strs[i].split("=")[0]] = strs[i].split("=")[1]
+            }
+        }
+        return request;
+    }
+</script>
+
+</body>
+</html>
